@@ -1,0 +1,17 @@
+syntax = "proto3";
+package properties;
+
+//define empty message
+
+service Property {
+    rpc GetProperty (PropertyRequest) returns (PropertyResponse);
+}
+
+message PropertyRequest {
+    string jwt_token = 1;
+}
+
+message PropertyResponse {
+    bool   successful = 1;
+    repeated string details = 2;
+}

@@ -1,0 +1,187 @@
+name: redpanda-quickstart-one-broker
+networks:
+  local_network:
+    driver: bridge
+volumes:
+  redpanda-0: null
+  ms-one-data:
+    driver: local
+services:
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+    image: docker.redpanda.com/redpandadata/redpanda:v24.1.1
+    container_name: redpanda-0
+    volumes:
+      - redpanda-0:/var/lib/redpanda/data
+    networks:
+      - local_network
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+  console:
+    container_name: redpanda-console
+    image: docker.redpanda.com/redpandadata/console:v2.5.2
+    networks:
+      - local_network
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda-0:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644"]
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda-0
+  ms-one-db:
+    image: postgres:13.2
+    container_name: ms-one-db
+    restart: always
+    user: root
+    volumes:
+      - ./ms-one-data/var/lib/postgresql/data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB_MSONE}
+    networks:
+      - local_network
+
+  # grpc-gw:
+  #   image: arturs706/grpc-gw:v0.1.3
+  #   container_name: grpc-gw
+  #   networks:
+  #     - local_network
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - REDIS_HOST=${REDIS_HOST}
+  #     - REDIS_PORT=${REDIS_PORT}
+  #     - JWT_SECRET=${JWT_SECRET}
+  #     - USER_SERVER_HOST=${USER_SERVER_HOST}
+  #     - USER_SERVER_PORT=${USER_SERVER_PORT}
+  #   depends_on:
+  #     - ms-one-db
+
+
+  # grpc-userservice:
+  #   image: arturs706/grpc-userservice:v0.0.1
+  #   container_name: grpc-userservice
+  #   networks:
+  #     - local_network
+  #   ports:
+  #     - "50050:50050"
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL}
+  #     - JWT_SECRET=${JWT_SECRET}
+  #     - RESET_PASSWORD_SECRET=${RESET_PASSWORD_SECRET}
+  #   depends_on:
+  #     - ms-one-db
+  
+  # redis:
+  #   image: redis:latest
+  #   container_name: redis-layer
+  #   restart: always
+  #   user: root
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - ./data/redis:/root/redis
+  #     - ./data/redis.conf:/usr/local/etc/redis/redis.conf
+  #   networks:
+  #     - local_network
+
+  # gouserservice:
+  #   image: arturs706/gouserservice:v0.0.2
+  #   container_name: gouserservice
+  #   ports:
+  #     - 2001:2001
+  #   environment:
+  #     - REDIS_HOST=${REDIS_HOST}
+  #     - REDIS_PORT=${REDIS_PORT}
+  #     - DB_HOST_GO=${DB_HOST_GO}
+  #     - DB_USERNAME=${DB_USERNAME}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #     - POSTGRES_DB=${POSTGRES_DB}
+  #   networks:
+  #     - local_network
+
+  # rust-userservice:
+  #   build:
+  #     context: ./axum_user_server
+  #     dockerfile: Dockerfile
+  #   container_name: rust-userservice
+  #   networks:
+  #     - local_network
+  #   ports:
+  #     - 10001:10001
+  #   volumes:
+  #     - './axum_user_server:/usr/src/axum_user_server'
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL}
+  #     - JWT_SECRET=${JWT_SECRET}
+  #     - RESET_PASSWORD_SECRET=${RESET_PASSWORD_SECRET}
+  #   depends_on:
+  #     - ms-one-db
+
+  # spring-gw:
+  #   image: spring_gw
+  #   container_name: spring-gw
+  #   networks:
+  #     - local_network
+  #   ports:
+  #     - 8888:8888
+
+  # spring-server:
+  #   image: spring_server
+  #   container_name: spring-server
+  #   networks:
+  #     - local_network
+  #   ports:
+  #     - "8899:8899"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: ${DB_HOST}
+  #     SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+  #     SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+
+
+
+
+ 
+  # grpc-gw:
+  #   image: grpc-gw
+  #   container_name: grpc-gw
+  #   networks:
+  #     - local_network
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL}
+  #     - JWT_SECRET=${JWT_SECRET}
+  #     - RESET_PASSWORD_SECRET=${RESET_PASSWORD_SECRET}
+  #   depends_on:
+  #     - ms-one-db

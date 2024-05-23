@@ -1,0 +1,20 @@
+[package]
+name = "actix_landlords_ms"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web = "4.2.1"
+serde = { version = "1.0.150", features = ["derive"] }
+sqlx = {version = "0.7.2", features = ["runtime-tokio-native-tls", "postgres", "time", "chrono", "uuid", "bigdecimal"] }
+uuid = { version = "1.2.2", features = ["v4", "serde"] }
+chrono = { version = "0.4.22", features = ["serde"] }
+futures-util = "0.3.29"
+jsonwebtoken = "9.1.0"
+dotenv = "0.15.0"
+derive_more = "0.99.17"
+serde_json = "1.0.89"
+argon2 = "0.5.2"
+listenfd = "1.0.1"

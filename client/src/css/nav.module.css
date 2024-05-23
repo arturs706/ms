@@ -1,0 +1,10 @@
+.nav {
+    display: flex;
+    flex-direction: column;
+    width: 10rem;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+  
+  

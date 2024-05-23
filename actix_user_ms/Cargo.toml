@@ -1,0 +1,40 @@
+[package]
+name = "actix_user_ms"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+actix-web = "4.2.1"
+redis = { version = "0.23.3", features = ["tokio-native-tls-comp"] }
+serde = { version = "1.0.150", features = ["derive"] }
+serde_json = "1.0.89"
+uuid = { version = "1.2.2", features = ["v4", "serde"] }
+chrono = { version = "0.4.22", features = ["serde"] }
+tower-http = { version = "0.4.4", features = ["cors"] }
+dotenv = "0.15.0"
+http = "0.2.8"
+argon2 = "0.5.2"
+tower-cookies = "0.9.0"
+jsonwebtoken = "9.1.0"
+tokio = { version = "1.23.0", features = ["full"] }
+bigdecimal = { version = "0.4.2", features = ["serde"] }
+sqlx = {version = "0.7.2", features = ["runtime-tokio-native-tls", "postgres", "time", "chrono", "uuid", "bigdecimal"] }
+rquickjs-sys = "0.3.1"
+futures-util = "0.3.29"
+listenfd = "1.0.1"
+rdkafka = "0.36.0"
+log = "0.4.20"
+lazy_static = "1.4.0"
+derive_more = "0.99.17"
+
+
+[profile.release-lto]
+inherits = "release"
+lto = true
+opt-level = 3
+
+
+[features]
+build-bindings = []
+# cargo run --profile release-lto

@@ -1,0 +1,37 @@
+[package]
+name = "usersgrpcserver"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+tonic = "0.10.2"
+prost = "0.12.1"
+tokio = { version = "1.33.0", features = ["macros", "rt-multi-thread"] }
+dotenv = "0.15.0"
+chrono = "0.4.31"
+sqlx = {version = "0.7.1", features = ["runtime-tokio-native-tls", "postgres", "time", "chrono", "uuid", "bigdecimal"] }
+uuid = { version = "1.4.1", features = ["serde", "v4"] }
+prost-types = "0.12.1"
+tower-http = { version = "0.4.4" , features = ["propagate-header", "cors"] }
+tonic-web = "0.10.2"
+http = "0.2.9"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+serde = { version = "1.0.195", features = ["derive"] }
+jsonwebtoken = "9.2.0"
+
+
+[build-dependencies]
+tonic-build = "0.10.2"
+
+
+[profile.release-lto]
+inherits = "release"
+lto = "fat"
+opt-level = 3
+
+
+[features]
+build-bindings = []
+# cargo run --profile release-lto

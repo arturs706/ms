@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: database-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /mnt/ssd/data/volumes/db_volume
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - worker
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: userservice
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-postgres-secret
+  namespace: userservice
+  labels:
+    app: user-postgres
+data:
+  POSTGRES_DB: user_db
+  POSTGRES_USER: user_db_user
+  POSTGRES_PASSWORD: SecurePassword
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: user-database-pv
+  namespace: userservice
+  labels:
+    app: user-postgres
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-storage
+  local:
+    path: /mnt/ssd/data/volumes/user_db_volume
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - worker
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: user-postgres-pvc
+  namespace: userservice
+  labels:
+    app: user-postgres
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-storage
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: user-postgres
+  namespace: userservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-postgres
+  template:
+    metadata:
+      labels:
+        app: user-postgres
+    spec:
+      containers:
+      - name: user-postgres
+        image: 'postgres:14'
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - configMapRef:
+            name: user-postgres-secret
+        # - configMapRef:
+        #     name: user-postgres-config
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: postgresdata
+      volumes:
+      - name: postgresdata
+        persistentVolumeClaim:
+          claimName: user-postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-postgres
+  namespace: userservice
+  labels:
+    app: user-postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+  selector:
+    app: user-postgres
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "ip-pool"
+spec:
+  blocks:
+  - start: "192.168.3.11"
+    stop: "192.168.3.11"
+

@@ -1,0 +1,111 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: cilium
+spec:
+  controllerName: io.cilium/gateway-controller
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-api-token
+type: Opaque
+stringData:
+  api-token: "TzRFBnsGrDa308YvQSgBdQJ-aGSTR80BX5HO3Ikl"
+---
+
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cloudflare-issuer
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: "21437262@student.uwl.ac.uk"
+    privateKeySecretRef:
+      name: cloudflare-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+---                
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: cilium-gateway
+  annotations:
+    cert-manager.io/issuer: cloudflare-issuer
+spec:
+  gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: "192.168.3.50"
+  listeners:
+    - protocol: HTTPS
+      port: 443
+      name: https-subdomains-gateway
+      hostname: "*.artdevldn.co.uk"
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: cloudflare-cert
+      allowedRoutes:
+        namespaces:
+          from: All
+    - protocol: HTTPS
+      port: 443
+      name: https-domain-gateway
+      hostname: "artdevldn.co.uk"
+      tls:
+        certificateRefs:
+          - kind: Secret
+            name: cloudflare-domain-cert
+      allowedRoutes:
+        namespaces:
+          from: All
+    - protocol: HTTP
+      name: http-subdomains-gateway
+      port: 80
+      hostname: "*.artdevldn.co.uk"
+      allowedRoutes:
+        namespaces:
+          from: All
+    - protocol: HTTP
+      name: http-domain-gateway
+      port: 80
+      hostname: "artdevldn.co.uk"
+      allowedRoutes:
+        namespaces:
+          from: All    
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-app-route-1
+spec:
+  parentRefs:
+  - name: cilium-gateway
+  hostnames:
+  - "console.artdevldn.co.uk"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: redpanda-console
+      namespace: redpanda-ns
+      port: 8080
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: default-l2-announcement-policy
+  namespace: kube-system
+spec:
+  interfaces:
+    - wlan0
+    - eth0  
+  loadBalancerIPs: true

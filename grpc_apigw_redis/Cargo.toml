@@ -1,0 +1,51 @@
+[package]
+name = "grpc_apigw"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tonic = "0.10.1"
+prost = "0.12.0"
+tokio = { version = "1.33", features = ["full"]}
+hyper = { version = "0.14.27", features = ["server", "runtime", "http1", "http2"] }
+hyper-tls = "0.5.0"
+serde = "1.0.189"
+serde_json = "1.0.107"
+arc-swap = "1.6.0"
+chrono = "0.4"
+jsonwebtoken = "9.0.0"
+dotenv = "0.15"
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
+futures = "0.3.28"
+tracing = "0.1.40"
+axum = { version = "0.6.20", features = ["headers"]}
+axum-macros = "0.3.8"
+http = "0.2.9"
+tower = { version = "0.4", features = ["full"] }
+async-trait = "0.1.74"
+tower_governor = "0.1.0"
+axum-client-ip = "0.4.2"
+tower-http = { version = "0.4.4" , features = ["propagate-header", "cors"] }
+metrics = "0.21.1"
+metrics-exporter-prometheus = "0.12.1"
+http-body = "0.4.5"
+prost-types = "0.12.1"
+tonic-web = "0.10.2"
+deadpool-redis = "0.13.0"
+
+
+[build-dependencies]
+tonic-build = "0.10.0"
+
+
+[profile.release-lto]
+inherits = "release"
+lto = "fat"
+opt-level = 3
+
+
+[features]
+build-bindings = []
+# cargo run --profile release-lto

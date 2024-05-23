@@ -1,0 +1,24 @@
+apiVersion: cluster.redpanda.com/v1alpha1
+kind: Redpanda
+metadata:
+  name: redpanda
+spec:
+  chartRef: {}
+  clusterSpec:
+    external:
+      domain: customredpandadomain.local
+    statefulset:
+      initContainers:
+        setDataDirOwnership:
+          enabled: true
+      replicas: 2
+    storage:
+      persistentVolume:
+        enabled: true
+        size: 20Gi
+        storageClass: local-storage
+    tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "redpanda"
+      effect: "NoSchedule"

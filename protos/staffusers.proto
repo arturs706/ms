@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package staffusers;
+
+service StaffUsers {
+  rpc RegisterUser (RegisterUserRequest) returns (RegisterUserResponse) {}
+  rpc Login (LoginRequest) returns (SingleUserRetrieve) {}
+  rpc GetUser (GetUserRequest) returns (SingleUserRetrieve) {}
+  rpc GetAllUsers (EmptyReqRes) returns (AllUserRetrieve) {}
+  rpc DeleteUser (DeleteUserRequest) returns (EmptyReqRes) {}
+  rpc EditUser (SingleUserRetrieve) returns (SingleUserRetrieve) {}
+  rpc ChangePassword (ChangePasswordRequest) returns (SingleUserRetrieve) {}
+  rpc AssignRole (AssignRoleRequest) returns (SingleUserRetrieve) {}
+  rpc SuspendAccount (SuspendAccountRequest) returns (SingleUserRetrieve) {}
+  rpc GetAllUsersNoRedis (EmptyReqRes) returns (AllUserRetrieve) {}
+}
+
+message RegisterUserRequest {
+  string name = 1;
+  string username = 2;
+  string mob_phone = 3;
+  string passwd = 4;
+}
+
+message RegisterUserResponse {
+  string name = 1;
+  string message = 2;
+}
+
+
+message SingleUserRetrieve {
+  string user_id = 1;
+  string name = 2;
+  string username = 3;
+  string mob_phone = 4;
+  string acc_level = 5;
+  string status = 6;
+  string a_created = 7;
+}
+
+message AllUserRetrieve {
+  repeated SingleUserRetrieve users = 1;
+}
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message GetUserRequest {
+  int32 user_id = 1;
+}
+
+message DeleteUserRequest {
+  int32 user_id = 1;
+}
+
+message ChangePasswordRequest {
+  int32 user_id = 1;
+  string old_password = 2;
+  string new_password = 3;
+}
+
+message AssignRoleRequest {
+  int32 user_id = 1;
+  string new_role = 2;
+}
+
+message SuspendAccountRequest {
+  int32 user_id = 1;
+}
+
+message EmptyReqRes {
+  optional string message = 1;
+}

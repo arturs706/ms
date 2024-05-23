@@ -1,0 +1,48 @@
+[package]
+name = "actix_gw"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+actix-web = "4.2.1"
+redis = { version = "0.23.3", features = ["tokio-native-tls-comp"] }
+serde = { version = "1.0.150", features = ["derive"] }
+serde_json = "1.0.89"
+uuid = { version = "1.2.2", features = ["v4", "serde"] }
+chrono = { version = "0.4.22", features = ["serde"] }
+tower-http = { version = "0.4.4", features = ["cors"] }
+dotenv = "0.15.0"
+http = "0.2.8"
+argon2 = "0.5.2"
+tower-cookies = "0.9.0"
+jsonwebtoken = "9.1.0"
+tokio = { version = "1.23.0", features = ["full"] }
+bigdecimal = { version = "0.4.2", features = ["serde"] }
+sqlx = {version = "0.7.2", features = ["runtime-tokio-native-tls", "postgres", "time", "chrono", "uuid", "bigdecimal"] }
+rquickjs-sys = "0.3.1"
+futures-util = "0.3.29"
+listenfd = "1.0.1"
+tower_governor = "0.1.0"
+actix-governor = "0.5.0"
+hyper = { version = "0.14.27", features = ["server", "client", "runtime", "http1"] }
+awc = "3.2.0"
+url = "2.4.1"
+tokio-stream = "0.1.14"
+reqwest = { version = "0.11", features = ["stream"] }
+env_logger = "0.10.0"
+lazy_static = "1.4.0"
+deadpool-redis = "0.13.0"
+actix-cors = "0.7.0"
+
+
+[profile.release-lto]
+inherits = "release"
+lto = "fat"
+opt-level = 3
+
+
+[features]
+build-bindings = []
+# cargo run --profile release-lto
+# cargo build --release -- -C lto

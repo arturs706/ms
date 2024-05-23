@@ -1,0 +1,65 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: tls-gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+  - name: https-1
+    protocol: HTTPS
+    port: 443
+    hostname: "artdevldn.co.uk"
+    tls:
+      certificateRefs:
+      - kind: Secret
+        name: example-app-tls
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: 192.168.3.91
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-app-route-1
+spec:
+  parentRefs:
+  - name: tls-gateway
+  hostnames:
+  - "artdevldn.co.uk"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: redpanda-console
+      namespace: redpanda-ns
+      port: 8080
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-cluster-issuer
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: artdevldn@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-cluster-issuer-key  # Replace with your chosen secret name
+    # Optional: Set custom HTTP01 or DNS01 challenge solver
+    solvers:
+     - http01:
+        ingress:
+          ingressClassName: cilium  # Specify the Cilium GatewayClass---
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: example-app
+spec:
+  dnsNames:
+    - artdevldn.co.uk  # Replace with your actual domain
+  secretName: example-app-tls  # Replace with your chosen secret name
+  issuerRef:
+    name: letsencrypt-cluster-issuer
+    kind: ClusterIssuer

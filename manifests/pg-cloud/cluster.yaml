@@ -1,0 +1,271 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: userservice
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: example-pv-3
+  namespace: userservice
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  local:
+    path: /mnt/ssd/data/volumes/pv3
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - worker
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: example-pv-4
+  namespace: userservice
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: standard
+  local:
+    path: /mnt/ssd/data/volumes/pv4
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - worker
+---
+apiVersion: v1
+data:
+  username: YXJ0dXJz
+  password: YXJ0dXJz
+kind: Secret
+metadata:
+  name: app-secret
+  namespace: userservice
+type: kubernetes.io/basic-auth
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backup-creds
+  namespace: userservice
+data:
+  ACCESS_KEY_ID: bWluaW8=
+  ACCESS_SECRET_KEY: bWluaW8xMjM=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-db-schema
+  namespace: userservice
+data:
+  schema.sql: |
+    CREATE TABLE staff_users (
+        user_id UUID PRIMARY KEY NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        mob_phone VARCHAR(50) UNIQUE NOT NULL,
+        passwd VARCHAR(100) NOT NULL,
+        acc_level VARCHAR(20) DEFAULT 'trainee' NOT NULL,
+        status VARCHAR(20) DEFAULT 'active' NOT NULL CHECK (status IN ('active', 'suspended')),
+        a_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        CONSTRAINT idx_username UNIQUE (username),
+        CONSTRAINT idx_mob_phone UNIQUE (mob_phone)
+    );
+
+    CREATE TABLE diary_settings (
+        staff_id UUID PRIMARY KEY,
+        diary_colour VARCHAR(20),
+        popup_notifi_en BOOLEAN,
+        email_notifi_en BOOLEAN,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        FOREIGN KEY (staff_id) REFERENCES staff_users(user_id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE address (
+        address_id UUID PRIMARY KEY,
+        staff_id UUID REFERENCES staff_users(user_id) ON DELETE CASCADE,
+        address_line_1 VARCHAR(255) NOT NULL,
+        address_line_2 VARCHAR(255),
+        town_city VARCHAR(255) NOT NULL,
+        county VARCHAR(255),
+        postcode VARCHAR(10) NOT NULL,
+        country VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+    );
+
+    CREATE TABLE audit_trail (
+        entry_id UUID PRIMARY KEY,
+        user_id UUID REFERENCES staff_users(user_id) ON DELETE CASCADE,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        description VARCHAR(255) NOT NULL,
+        action_type VARCHAR(20) NOT NULL,
+        ip_address VARCHAR(15)
+    );
+
+    CREATE TABLE changes_made (
+        entry_id UUID PRIMARY KEY,
+        user_id UUID REFERENCES staff_users(user_id) ON DELETE CASCADE,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        description VARCHAR(255) NOT NULL,
+        action_type VARCHAR(20) NOT NULL,
+        target_user VARCHAR(100)
+    );
+
+    CREATE TABLE notes (
+        note_id UUID PRIMARY KEY,
+        user_id UUID REFERENCES staff_users(user_id) ON DELETE CASCADE,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        note_text TEXT NOT NULL
+    );
+
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE staff_users TO arturs;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE diary_settings TO arturs;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE address TO arturs;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE audit_trail TO arturs;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE changes_made TO arturs;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE notes TO arturs;
+
+---
+
+
+apiVersion: v1
+data:
+  password: YXJ0dXJz
+  username: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  name: cluster-example-superuser
+  namespace: userservice
+type: kubernetes.io/basic-auth
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-cnpg
+  namespace: userservice
+spec:
+  description: "Cluster CNPG"
+  imageName: ghcr.io/cloudnative-pg/postgresql:15.4
+  instances: 2
+  startDelay: 300
+  stopDelay: 300
+  primaryUpdateStrategy: unsupervised
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://sql/
+      endpointURL: http://minio-svc.minio-ns.svc.cluster.local:9000
+      s3Credentials:
+        accessKeyId:
+          name: backup-creds
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: backup-creds
+          key: ACCESS_SECRET_KEY
+  storage:
+    size: 1Gi
+    pvcTemplate:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+      storageClassName: standard
+      volumeMode: Filesystem
+  postgresql:
+    parameters:
+      shared_buffers: 256MB
+      pg_stat_statements.max: '10000'
+      pg_stat_statements.track: all
+      auto_explain.log_min_duration: '10s'
+    pg_hba:
+      - host all all all md5
+  bootstrap:
+    initdb:
+      database: user_db
+      owner: arturs
+      secret:
+        name: app-secret
+      postInitApplicationSQLRefs:
+        configMapRefs:
+        - name: user-db-schema
+          key: schema.sql
+      postInitApplicationSQL:
+        - GRANT ALL PRIVILEGES ON DATABASE user_db TO arturs
+        - ALTER DEFAULT PRIVILEGES FOR ROLE arturs IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO arturs
+        - ALTER USER arturs CREATEDB
+
+  superuserSecret:
+    name: cluster-example-superuser
+  storage:
+    storageClass: standard
+    size: 1Gi
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "1"
+    limits:
+      memory: "1Gi"
+      cpu: "2"
+  nodeMaintenanceWindow:
+    inProgress: false
+    reusePVC: false
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: pooler-example-rw
+  namespace: userservice
+spec:
+  cluster:
+    name: cluster-cnpg
+  instances: 2
+  type: rw
+  pgbouncer:
+    poolMode: session
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: pooler-example-ro
+  namespace: userservice
+spec:
+  cluster:
+    name: cluster-cnpg
+  instances: 2
+  type: ro
+  pgbouncer:
+    poolMode: session
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "10"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: backup-example
+  namespace: userservice
+spec:
+  schedule: "*/10 * * * *"  # Runs the backup every 10 minutes.
+  backupOwnerReference: self  # Indicates that the backup is owned by itself.
+  cluster:
+    name: cluster-cnpg  # Specifies the name of the PostgreSQL cluster for which the backup is scheduled.

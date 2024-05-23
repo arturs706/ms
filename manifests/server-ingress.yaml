@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: redpanda-ns-ingress
+  namespace: redpanda-ns
+spec:
+  ingressClassName: cilium
+  rules:
+  - host: artdevldn.co.uk
+  - http:
+      paths:
+      - backend:
+          service:
+            name: redpanda-console
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
+

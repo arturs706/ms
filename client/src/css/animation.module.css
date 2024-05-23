@@ -1,0 +1,21 @@
+.container{
+  
+    transform:translate(0%, 0%);
+    width:120px;
+    height:40px;
+    display:block;
+    font-size: 0;
+    overflow:hidden;
+    white-space: nowrap;  
+  }
+.span{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    background:#000000;
+    display:inline-block;
+    position: relative;
+    left: -60px;
+    margin-right: 20px;
+  }
+  
